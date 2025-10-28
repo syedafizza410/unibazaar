@@ -1,0 +1,20 @@
+# Environment
+.env
+google_key.json
+
+
+# Python virtual environment
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Build / compiled files
+build/
+dist/
