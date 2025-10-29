@@ -1,6 +1,6 @@
 from google.cloud import texttospeech
-import base64
-import re
+from google.oauth2 import service_account
+import base64, re, os, json
 
 def synthesize_speech(text: str, language_code: str):
     """
@@ -11,7 +11,16 @@ def synthesize_speech(text: str, language_code: str):
     Returns base64 audio string for frontend playback or None on failure.
     """
     try:
-        client = texttospeech.TextToSpeechClient()
+        # 🔑 Load Google credentials from environment (Render setup)
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")
+        if not google_key_json:
+            raise ValueError("❌ GOOGLE_KEY_JSON variable missing!")
+
+        credentials = service_account.Credentials.from_service_account_info(
+            json.loads(google_key_json)
+        )
+
+        client = texttospeech.TextToSpeechClient(credentials=credentials)
 
         # ---------- URL placeholders ----------
         url_placeholder = {
@@ -19,7 +28,6 @@ def synthesize_speech(text: str, language_code: str):
             "roman_ur": "Yahan university ki website hai, check karein.",
         }.get(language_code, "Here's the university website, check it out.")
 
-        # Replace URLs with placeholder
         text = re.sub(r"\[.*?\]\((https?://[^\s\)]+)\)", url_placeholder, text)
         text = re.sub(r"https?://[^\s]+", url_placeholder, text)
 
@@ -33,10 +41,8 @@ def synthesize_speech(text: str, language_code: str):
         ])}
 
         def read_digits(num_str: str):
-            """Convert digits to spaced words"""
             return " ".join(digit_map.get(d, d) for d in num_str)
 
-        # Read long numbers digit-by-digit if likely a phone/contact number
         def smart_number_reader(match):
             try:
                 num = match.group(0)
@@ -48,8 +54,6 @@ def synthesize_speech(text: str, language_code: str):
                 return match.group(0)
 
         text = re.sub(r"\+?\d{3,15}", smart_number_reader, text)
-
-        # Remove extra spaces
         text = re.sub(r"\s+", " ", text).strip()
 
         # ---------- Voice selection ----------
@@ -75,7 +79,7 @@ def synthesize_speech(text: str, language_code: str):
 
         synthesis_input = texttospeech.SynthesisInput(text=text)
 
-        # Generate speech
+        # ---------- Generate speech ----------
         response = client.synthesize_speech(
             input=synthesis_input,
             voice=voice_params,
