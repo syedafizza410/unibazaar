@@ -3,14 +3,12 @@ import google.generativeai as genai
 import os, re, json, traceback
 from dotenv import load_dotenv
 
-# ✅ Import Text-to-Speech function safely
 try:
     from routers.tts import synthesize_speech
 except Exception as e:
     print("⚠️ Warning: TTS module not found or import failed:", e)
-    synthesize_speech = lambda text, lang: None  # fallback
+    synthesize_speech = lambda text, lang: None  
 
-# ---------- Load environment ----------
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -21,7 +19,6 @@ genai.configure(api_key=API_KEY)
 router = APIRouter()
 
 
-# ---------- Helper Functions ----------
 def detect_language(text: str) -> str:
     if any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se", "mera", "apka"]):
         return "roman_ur"
@@ -54,7 +51,6 @@ def clean_text_for_tts(text: str, language: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-# ---------- Main Chat Endpoint ----------
 @router.post("/agent")
 async def chat_agent(request: Request):
     try:
@@ -65,7 +61,6 @@ async def chat_agent(request: Request):
         if not user_message:
             return {"reply": "Please type or say something to start.", "audio": ""}
 
-        # 🛡️ University-topic filter
         allowed_keywords = [
             "university", "college", "faculty", "department", "campus",
             "admission", "degree", "scholarship", "fees", "education", "study",
@@ -89,7 +84,6 @@ async def chat_agent(request: Request):
                 audio = ""
             return {"reply": reply, "audio": audio}
 
-        # ---------- Greetings ----------
         greetings = ["hi", "hey", "hello", "salam", "assalamualaikum", "hy", "heyy"]
         if user_message.lower() in greetings:
             if language == "en":
@@ -108,7 +102,6 @@ async def chat_agent(request: Request):
             audio = synthesize_speech(clean_text_for_tts(reply, language), language)
             return {"reply": reply, "audio": audio}
 
-        # ---------- Gemini API Call ----------
         model = genai.GenerativeModel("models/gemini-2.0-flash")
         prompt = f"""
 You are UniBazaar AI — a helpful multilingual university assistant.
@@ -124,7 +117,6 @@ If data is unavailable, write "Not available".
         response = model.generate_content(prompt)
         response_text = getattr(response, "text", "").strip() or "Sorry, I couldn’t generate a response."
 
-        # ---------- Try Parsing JSON ----------
         try:
             universities = json.loads(response_text)
             if isinstance(universities, list):

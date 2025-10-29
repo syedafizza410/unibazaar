@@ -11,7 +11,6 @@ def synthesize_speech(text: str, language_code: str):
     Returns base64 audio string for frontend playback or None on failure.
     """
     try:
-        # 🔑 Load Google credentials from environment (Render setup)
         google_key_json = os.getenv("GOOGLE_KEY_JSON")
         if not google_key_json:
             raise ValueError("❌ GOOGLE_KEY_JSON variable missing!")
@@ -22,7 +21,6 @@ def synthesize_speech(text: str, language_code: str):
 
         client = texttospeech.TextToSpeechClient(credentials=credentials)
 
-        # ---------- URL placeholders ----------
         url_placeholder = {
             "en": "Here's the university website, check it out.",
             "roman_ur": "Yahan university ki website hai, check karein.",
@@ -31,10 +29,8 @@ def synthesize_speech(text: str, language_code: str):
         text = re.sub(r"\[.*?\]\((https?://[^\s\)]+)\)", url_placeholder, text)
         text = re.sub(r"https?://[^\s]+", url_placeholder, text)
 
-        # ---------- Clean unwanted characters ----------
         text = re.sub(r"[^a-zA-Z0-9\u0600-\u06FF\s\+\:\-]", " ", text)
 
-        # ---------- Digit reading ----------
         digit_map = {str(i): w for i, w in enumerate([
             "zero", "one", "two", "three", "four",
             "five", "six", "seven", "eight", "nine"
@@ -56,21 +52,19 @@ def synthesize_speech(text: str, language_code: str):
         text = re.sub(r"\+?\d{3,15}", smart_number_reader, text)
         text = re.sub(r"\s+", " ", text).strip()
 
-        # ---------- Voice selection ----------
         if language_code == "roman_ur":
             voice_params = texttospeech.VoiceSelectionParams(
                 language_code="hi-IN",
                 name="hi-IN-Wavenet-D",
                 ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
             )
-        else:  # English
+        else: 
             voice_params = texttospeech.VoiceSelectionParams(
                 language_code="en-GB",
                 name="en-GB-Wavenet-F",
                 ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
             )
 
-        # ---------- Audio config ----------
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=0.85,
@@ -79,7 +73,6 @@ def synthesize_speech(text: str, language_code: str):
 
         synthesis_input = texttospeech.SynthesisInput(text=text)
 
-        # ---------- Generate speech ----------
         response = client.synthesize_speech(
             input=synthesis_input,
             voice=voice_params,
