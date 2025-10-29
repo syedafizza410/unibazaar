@@ -5,7 +5,6 @@ export async function GET(req: Request) {
   const query = searchParams.get("q") || "";
 
   try {
-    // Call the Gemini agent instead of the old /search route
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/faculty-agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,7 +19,6 @@ export async function GET(req: Request) {
 
     const data = await res.json();
 
-    // Return the Gemini's reply to frontend
     return NextResponse.json({
       reply: data.reply || "No response received from agent.",
     });

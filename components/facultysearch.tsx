@@ -21,14 +21,13 @@ export default function FacultySearch() {
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
 
-  // 🧹 Clean and parse comma/line-separated lists safely
   const parseTextList = (text: string): string[] =>
     text
       .split(/,|\n|;/)
       .map((item) =>
         item
-          .replace(/^\s*[\d\-*•]+\s*/, "") // remove bullet symbols and numbering
-          .replace(/\(.*?\)/g, "") // remove parentheses text
+          .replace(/^\s*[\d\-*•]+\s*/, "")
+          .replace(/\(.*?\)/g, "") 
           .trim()
       )
       .filter(
@@ -154,7 +153,6 @@ export default function FacultySearch() {
         🎓 Find Universities by Country, City & Faculty
       </h2>
 
-      {/* ✅ Responsive Country & City Row */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4 w-full">
         <div className="w-full sm:w-1/2">
           <select
@@ -188,7 +186,6 @@ export default function FacultySearch() {
         </div>
       </div>
 
-      {/* Faculty Search Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -211,7 +208,6 @@ export default function FacultySearch() {
         </button>
       </div>
 
-      {/* Results */}
       {universities.length > 0 ? (
         <div className="grid sm:grid-cols-2 gap-4">
           {universities.map((uni, idx) => (

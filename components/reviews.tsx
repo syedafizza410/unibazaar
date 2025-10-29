@@ -16,9 +16,8 @@ export default function ReviewSection() {
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL + "/reviews"; // ⬅️ Full backend URL
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL + "/reviews"; 
 
-  // ---------- Fetch Reviews from Backend ----------
   useEffect(() => {
     const fetchReviews = async () => {
       try {
@@ -35,7 +34,6 @@ export default function ReviewSection() {
     fetchReviews();
   }, []);
 
-  // ---------- Submit Review ----------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !comment) return;
@@ -68,7 +66,6 @@ export default function ReviewSection() {
     <div className="mt-8 p-6 rounded-xl shadow-md max-w-2xl mx-auto bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
       <h2 className="text-2xl font-bold mb-4">Student Reviews</h2>
 
-      {/* Review Form */}
       <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-3">
         <input
           type="text"
@@ -102,7 +99,6 @@ export default function ReviewSection() {
         </button>
       </form>
 
-      {/* Reviews List */}
       <div className="flex flex-col gap-4">
         {loading ? (
           <p>Loading reviews...</p>

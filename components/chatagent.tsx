@@ -43,7 +43,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
   const [language, setLanguage] = useState("en-US");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  // 🎤 Voice Input Setup
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition =
@@ -77,7 +76,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
     }
   };
 
-  // ✉️ Send message to backend
   const sendMessage = async (message?: string, isVoice = false) => {
     const text = message || input;
     if (!text.trim()) return;
@@ -100,7 +98,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
 
       setChat((prev) => [...prev, { from: "bot", text: replyText }]);
 
-      // 🔊 Play backend audio if available
       if (voiceReply && data.audio) {
         const audio = new Audio(data.audio);
         audio.play();
@@ -116,12 +113,10 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
     }
   };
 
-  // 🌐 Render messages with URL fix
   const renderMessage = (text: string) => {
     const parts = text.split(/(\[.*?\]\(.*?\)|https?:\/\/[^\s]+)/g);
 
     return parts.map((part, idx) => {
-      // Already a markdown link
       const markdownMatch = part.match(/\[(.*)\]\((.*)\)/);
       if (markdownMatch) {
         const [, label, url] = markdownMatch;
@@ -138,7 +133,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
         );
       }
 
-      // Plain URL
       if (part.match(/https?:\/\/[^\s]+/)) {
         return (
           <a
@@ -153,7 +147,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
         );
       }
 
-      // Normal text
       return (
         <span key={idx} className="whitespace-pre-wrap">
           {part}

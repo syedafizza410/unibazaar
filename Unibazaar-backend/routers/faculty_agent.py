@@ -3,7 +3,6 @@ import google.generativeai as genai
 import os, re, time
 from dotenv import load_dotenv
 
-# ---------- Setup ----------
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -13,11 +12,9 @@ if not API_KEY:
 genai.configure(api_key=API_KEY)
 router = APIRouter()
 
-# ---------- Cache ----------
 CACHE = {"countries": {"timestamp": 0, "data": None}, "cities": {}}
 CACHE_TTL = 86400  # 1 day
 
-# ---------- Helper Functions ----------
 def fix_broken_markdown_links(text: str) -> str:
     pattern = r"\[([^\]]+)\]\(([^\)\s]+)\)"
     return re.sub(pattern, r"[\1](\2)", text)
@@ -40,7 +37,6 @@ def clean_text_list(text: str):
         if i.strip() and not re.search(r"list|countries|cities|world|here", i, re.I)
     ]
 
-# ---------- Route: Faculty Search + Country/City ----------
 @router.post("/faculty-agent")
 async def faculty_agent(request: Request):
     """
@@ -54,7 +50,6 @@ async def faculty_agent(request: Request):
 
         model = genai.GenerativeModel("models/gemini-2.0-flash")
 
-        # ---------- COUNTRY LIST ----------
         if "list all countries" in user_query or "get countries" in user_query:
             if CACHE["countries"]["data"] and (time.time() - CACHE["countries"]["timestamp"] < CACHE_TTL):
                 print("✅ Serving countries from cache")
@@ -72,7 +67,6 @@ Example: Pakistan, India, China, Japan, ...
             CACHE["countries"] = {"timestamp": time.time(), "data": reply_clean}
             return {"reply": reply_clean}
 
-        # ---------- CITY LIST ----------
         match = re.search(r"list (major )?cities in (.+)", user_query)
         if match:
             country_name = match.group(2).strip().title()
@@ -92,7 +86,6 @@ Example: Karachi, Lahore, Islamabad, ...
             CACHE["cities"][country_name] = {"timestamp": time.time(), "data": reply_clean}
             return {"reply": reply_clean}
 
-        # ---------- FACULTY SEARCH ----------
         if not user_query:
             return {"reply": "Please enter a faculty or program to search."}
 

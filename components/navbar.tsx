@@ -16,7 +16,6 @@ export default function Navbar() {
           UniBazaar
         </Link>
 
-        {/* Desktop Menu */}
         <div className="hidden md:flex space-x-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           <Link href="/" className="hover:text-indigo-800">
             Home
@@ -29,7 +28,6 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="md:hidden text-indigo-600 focus:outline-none"
@@ -38,7 +36,6 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Dropdown Menu */}
       {menuOpen && (
         <div className="md:hidden bg-white shadow-md border-t border-gray-100">
           <div className="flex flex-col space-y-4 px-6 py-4 text-indigo-600">

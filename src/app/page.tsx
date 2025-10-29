@@ -11,14 +11,12 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero receives setter to open chat */}
       <Hero setIsChatOpen={setIsChatOpen} />
 
       <FacultySearch />
 
       <ReviewSection />
 
-      {/* ChatAgent receives open state & setter */}
       <ChatAgent open={isChatOpen} setOpen={setIsChatOpen} />
     </div>
   );

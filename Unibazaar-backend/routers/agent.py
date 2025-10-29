@@ -20,62 +20,39 @@ if not API_KEY:
 genai.configure(api_key=API_KEY)
 router = APIRouter()
 
+
 # ---------- Helper Functions ----------
+def detect_language(text: str) -> str:
+    if any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se", "mera", "apka"]):
+        return "roman_ur"
+    return "en"
+
 def fix_broken_markdown_links(text: str) -> str:
     pattern = r"\[([^\]]+)\]\(([^\)\s]+)\)"
     return re.sub(pattern, r"[\1](\2)", text)
 
 def convert_urls_to_markdown(text: str) -> str:
     url_pattern = r"https?://[^\s\)\]]+"
-
     def repl(match):
         url = match.group(0)
         if re.search(rf"\[.*\]\({re.escape(url)}\)", text):
             return url
         return f"[{url}]({url})"
-
     return re.sub(url_pattern, repl, text)
-
-def detect_language(text: str) -> str:
-    """Detect if text is Roman Urdu or English."""
-    if any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se", "mera", "apka"]):
-        return "roman_ur"
-    return "en"
 
 def replace_urls_with_placeholder(text: str, language: str) -> str:
     placeholder = {
         "en": "Here's the university website, check it out.",
         "roman_ur": "Yahan university ki website hai, check karein.",
     }.get(language, "Here's the university website, check it out.")
-
     text = re.sub(r"\[.*?\]\((https?://[^\s\)]+)\)", placeholder, text)
     text = re.sub(r"https?://[^\s]+", placeholder, text)
     return text
 
 def clean_text_for_tts(text: str, language: str) -> str:
     text = re.sub(r"[^A-Za-z0-9\s\+]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
-    digit_map = {str(i): w for i, w in enumerate([
-        "zero", "one", "two", "three", "four",
-        "five", "six", "seven", "eight", "nine"
-    ])}
-
-    def read_digits(digits):
-        return " ".join(digit_map.get(d, d) for d in digits)
-
-    def smart_number_reader(match):
-        try:
-            num = match.group(0)
-            context_window = text[max(0, match.start()-15):match.start()].lower()
-            if len(num) >= 7 and any(k in context_window for k in ["contact","phone","no"]):
-                return read_digits(num)
-            return num
-        except Exception:
-            return match.group(0)
-
-    text = re.sub(r"\+?\d{3,15}", smart_number_reader, text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
 
 # ---------- Main Chat Endpoint ----------
 @router.post("/agent")
@@ -87,6 +64,30 @@ async def chat_agent(request: Request):
 
         if not user_message:
             return {"reply": "Please type or say something to start.", "audio": ""}
+
+        # 🛡️ University-topic filter
+        allowed_keywords = [
+            "university", "college", "faculty", "department", "campus",
+            "admission", "degree", "scholarship", "fees", "education", "study",
+            "courses", "majors", "program", "ranking"
+        ]
+
+        if not any(k in user_message.lower() for k in allowed_keywords):
+            if language == "roman_ur":
+                reply = (
+                    "Maaf kijiye, main sirf universities ke mutaliq sawalon ka jawab de sakta hoon. "
+                    "Agar aapko universities, admission, ya faculty ke bare mein kuch poochna hai to main hazir hoon."
+                )
+            else:
+                reply = (
+                    "Sorry, I can only answer questions related to universities. "
+                    "If you want to know about universities information, I can help."
+                )
+
+            audio = synthesize_speech(reply, language)
+            if not audio:
+                audio = ""
+            return {"reply": reply, "audio": audio}
 
         # ---------- Greetings ----------
         greetings = ["hi", "hey", "hello", "salam", "assalamualaikum", "hy", "heyy"]
@@ -105,8 +106,6 @@ async def chat_agent(request: Request):
                 )
 
             audio = synthesize_speech(clean_text_for_tts(reply, language), language)
-            if not audio:
-                audio = ""
             return {"reply": reply, "audio": audio}
 
         # ---------- Gemini API Call ----------
@@ -116,26 +115,14 @@ You are UniBazaar AI — a helpful multilingual university assistant.
 User's message: "{user_message}"
 Reply in the same language (English or Roman Urdu).
 
-If the user asks about universities, always provide structured info like this:
-
-    "fee": "Approximate fee structure",
-    "website": "https://universitywebsite.com",
-    "contact": "Phone number",
-    "email": "Email address"
+If the user asks about universities, always provide structured info like:
+"fee", "website", "contact", "email".
 
 If data is unavailable, write "Not available".
 """
 
-        try:
-            response = model.generate_content(prompt)
-            response_text = getattr(response, "text", "").strip() or "Sorry, I couldn’t generate a response."
-        except Exception as e:
-            error_str = str(e).lower()
-            if "quota" in error_str or "429" in error_str:
-                print("⚠️ Gemini quota exceeded — returning fallback message.")
-                return {"reply": "⚠️ The server is currently busy due to high demand. Please try again after some time.", "audio": ""}
-            else:
-                raise
+        response = model.generate_content(prompt)
+        response_text = getattr(response, "text", "").strip() or "Sorry, I couldn’t generate a response."
 
         # ---------- Try Parsing JSON ----------
         try:
@@ -161,14 +148,10 @@ If data is unavailable, write "Not available".
             reply_text = fix_broken_markdown_links(response_text)
             reply_text = convert_urls_to_markdown(reply_text)
 
-        # ---------- TTS ----------
         reply_text_for_tts = replace_urls_with_placeholder(reply_text, language)
         reply_text_for_tts = clean_text_for_tts(reply_text_for_tts, language)
 
         audio = synthesize_speech(reply_text_for_tts, language)
-        if not audio:
-            audio = ""
-
         return {"reply": reply_text, "audio": audio}
 
     except Exception as e:
