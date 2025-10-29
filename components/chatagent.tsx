@@ -212,7 +212,7 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
                 className="text-white text-sm rounded px-2 py-1"
               >
                 <option value="en-US" className="text-black">English</option>
-                <option value="ur-PK" className="text-black">Urdu</option>
+                {/* <option value="ur" className="text-black">Saraiki</option> */}
                 <option value="en-IN" className="text-black">Roman Urdu</option>
               </select>
               <button

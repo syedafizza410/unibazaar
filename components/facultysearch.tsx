@@ -41,7 +41,9 @@ export default function FacultySearch() {
     const lines = text.split("\n").filter(Boolean);
     const uniList: University[] = [];
     lines.forEach((line) => {
-      const match = line.match(/\*\*(.+?)\*\*,\s*(.+?),\s*(.+?),\s*(https?:\/\/[^\s]+)/);
+      const match = line.match(
+        /\*\*(.+?)\*\*,\s*(.+?),\s*(.+?),\s*(https?:\/\/[^\s]+)/
+      );
       if (match) {
         uniList.push({
           name: match[1].trim(),
@@ -56,11 +58,14 @@ export default function FacultySearch() {
 
   const fetchCountries = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/faculty-agent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "List all countries of the world." }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/faculty-agent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "List all countries of the world." }),
+        }
+      );
       const data = await res.json();
       if (data.reply && typeof data.reply === "string") {
         const cleanText = data.reply
@@ -79,11 +84,14 @@ export default function FacultySearch() {
   const fetchCities = async (country: string) => {
     if (!country) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/faculty-agent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: `List major cities in ${country}.` }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/faculty-agent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: `List major cities in ${country}.` }),
+        }
+      );
       const data = await res.json();
       if (data.reply && typeof data.reply === "string") {
         const cleanText = data.reply
@@ -146,34 +154,38 @@ export default function FacultySearch() {
         🎓 Find Universities by Country, City & Faculty
       </h2>
 
-      {/* Country & City Row */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <select
-          value={selectedCountry}
-          onChange={(e) => setSelectedCountry(e.target.value)}
-          className="flex-1 p-3 border border-gray-300 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-50"
-        >
-          <option value="">Select Country</option>
-          {countries.map((country, idx) => (
-            <option key={idx} value={country}>
-              {country}
-            </option>
-          ))}
-        </select>
+      {/* ✅ Responsive Country & City Row */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 w-full">
+        <div className="w-full sm:w-1/2">
+          <select
+            value={selectedCountry}
+            onChange={(e) => setSelectedCountry(e.target.value)}
+            className="w-full max-w-full p-3 border border-gray-300 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-50 overflow-hidden text-ellipsis"
+          >
+            <option value="">Select Country</option>
+            {countries.map((country, idx) => (
+              <option key={idx} value={country}>
+                {country}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <select
-          value={selectedCity}
-          onChange={(e) => setSelectedCity(e.target.value)}
-          disabled={!selectedCountry}
-          className="flex-1 p-3 border border-gray-300 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-50"
-        >
-          <option value="">Select City</option>
-          {cities.map((city, idx) => (
-            <option key={idx} value={city}>
-              {city}
-            </option>
-          ))}
-        </select>
+        <div className="w-full sm:w-1/2">
+          <select
+            value={selectedCity}
+            onChange={(e) => setSelectedCity(e.target.value)}
+            disabled={!selectedCountry}
+            className="w-full max-w-full p-3 border border-gray-300 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-50 overflow-hidden text-ellipsis"
+          >
+            <option value="">Select City</option>
+            {cities.map((city, idx) => (
+              <option key={idx} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Faculty Search Bar */}

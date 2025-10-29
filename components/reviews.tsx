@@ -111,9 +111,10 @@ export default function ReviewSection() {
         ) : (
           reviews.map((r, idx) => (
             <div key={idx} className="p-3 rounded shadow-sm border border-white bg-white text-gray-800">
-              <p>"{r.comment}"</p>
-              <p className="text-sm text-gray-500">
-                - {r.name}, {r.date}
+              <p className="text-md text-gray-900">
+                <span className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Name: </span>{r.name} <br />
+                <span className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Review:</span> {r.comment} <br />
+                <span className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Date: </span>{r.date}
               </p>
             </div>
           ))

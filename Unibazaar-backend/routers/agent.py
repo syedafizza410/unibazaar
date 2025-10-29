@@ -20,12 +20,10 @@ if not API_KEY:
 genai.configure(api_key=API_KEY)
 router = APIRouter()
 
-
 # ---------- Helper Functions ----------
 def fix_broken_markdown_links(text: str) -> str:
     pattern = r"\[([^\]]+)\]\(([^\)\s]+)\)"
     return re.sub(pattern, r"[\1](\2)", text)
-
 
 def convert_urls_to_markdown(text: str) -> str:
     url_pattern = r"https?://[^\s\)\]]+"
@@ -38,49 +36,46 @@ def convert_urls_to_markdown(text: str) -> str:
 
     return re.sub(url_pattern, repl, text)
 
-
 def detect_language(text: str) -> str:
-    urdu_chars = re.compile(r"[\u0600-\u06FF]")
-    if urdu_chars.search(text):
-        return "ur"
-    elif any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se"]):
+    """Detect if text is Roman Urdu or English."""
+    if any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se", "mera", "apka"]):
         return "roman_ur"
-    else:
-        return "en"
-
+    return "en"
 
 def replace_urls_with_placeholder(text: str, language: str) -> str:
     placeholder = {
         "en": "Here's the university website, check it out.",
-        "ur": "Yahan university ka website hai, dekh lein.",
-        "roman_ur": "Yahan university ka website hai, check karein.",
+        "roman_ur": "Yahan university ki website hai, check karein.",
     }.get(language, "Here's the university website, check it out.")
 
     text = re.sub(r"\[.*?\]\((https?://[^\s\)]+)\)", placeholder, text)
     text = re.sub(r"https?://[^\s]+", placeholder, text)
     return text
 
-
 def clean_text_for_tts(text: str, language: str) -> str:
-    text = re.sub(r"[^A-Za-z0-9\u0600-\u06FF\s\+]", " ", text)
+    text = re.sub(r"[^A-Za-z0-9\s\+]", " ", text)
 
-    digit_map = {
-        "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
-        "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine"
-    }
+    digit_map = {str(i): w for i, w in enumerate([
+        "zero", "one", "two", "three", "four",
+        "five", "six", "seven", "eight", "nine"
+    ])}
 
     def read_digits(digits):
-        return " ".join(digit_map[d] for d in digits)
+        return " ".join(digit_map.get(d, d) for d in digits)
 
-    text = re.sub(
-        r"(?i)(?<=contact[:\s]|phone[:\s]|\bno[:\s])(\+?\d{7,15})",
-        lambda m: read_digits(m.group(1)),
-        text,
-    )
-    text = re.sub(r"\+?\d{7,15}", lambda m: read_digits(m.group(0)), text)
+    def smart_number_reader(match):
+        try:
+            num = match.group(0)
+            context_window = text[max(0, match.start()-15):match.start()].lower()
+            if len(num) >= 7 and any(k in context_window for k in ["contact","phone","no"]):
+                return read_digits(num)
+            return num
+        except Exception:
+            return match.group(0)
+
+    text = re.sub(r"\+?\d{3,15}", smart_number_reader, text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
-
 
 # ---------- Main Chat Endpoint ----------
 @router.post("/agent")
@@ -91,7 +86,7 @@ async def chat_agent(request: Request):
         language = data.get("language") or detect_language(user_message)
 
         if not user_message:
-            return {"reply": "Please type or say something to start."}
+            return {"reply": "Please type or say something to start.", "audio": ""}
 
         # ---------- Greetings ----------
         greetings = ["hi", "hey", "hello", "salam", "assalamualaikum", "hy", "heyy"]
@@ -99,23 +94,19 @@ async def chat_agent(request: Request):
             if language == "en":
                 reply = (
                     "Hello! I'm UniBazaar AI, your multilingual university assistant.\n"
-                    "You can talk to me in English, Urdu, or Roman Urdu.\n"
+                    "You can talk to me in English or Roman Urdu.\n"
                     "How can I help you today?"
-                )
-            elif language == "ur":
-                reply = (
-                    "Assalamualaikum! Main UniBazaar AI hoon, aapki university guide.\n"
-                    "Aap mujh se Urdu, Roman Urdu, ya English mein baat kar sakti hain.\n"
-                    "Poochhiye, kis field ke universities chahiye?"
                 )
             else:
                 reply = (
                     "Salam! Main UniBazaar AI hoon, aapki madad ke liye.\n"
-                    "Aap mujh se English, Urdu, ya Roman Urdu mein baat kar sakti hain.\n"
+                    "Aap mujh se English ya Roman Urdu mein baat kar sakti hain.\n"
                     "Bataiye kis field ke universities chahiye?"
                 )
 
             audio = synthesize_speech(clean_text_for_tts(reply, language), language)
+            if not audio:
+                audio = ""
             return {"reply": reply, "audio": audio}
 
         # ---------- Gemini API Call ----------
@@ -123,7 +114,7 @@ async def chat_agent(request: Request):
         prompt = f"""
 You are UniBazaar AI — a helpful multilingual university assistant.
 User's message: "{user_message}"
-Reply in the same language (English, Urdu, or Roman Urdu).
+Reply in the same language (English or Roman Urdu).
 
 If the user asks about universities, always provide structured info like this:
 
@@ -139,13 +130,10 @@ If data is unavailable, write "Not available".
             response = model.generate_content(prompt)
             response_text = getattr(response, "text", "").strip() or "Sorry, I couldn’t generate a response."
         except Exception as e:
-            # 🔥 Handle Gemini quota exceeded error gracefully
             error_str = str(e).lower()
             if "quota" in error_str or "429" in error_str:
                 print("⚠️ Gemini quota exceeded — returning fallback message.")
-                return {
-                    "reply": "⚠️ The server is currently busy due to high demand. Please try again after some time."
-                }
+                return {"reply": "⚠️ The server is currently busy due to high demand. Please try again after some time.", "audio": ""}
             else:
                 raise
 
@@ -176,11 +164,14 @@ If data is unavailable, write "Not available".
         # ---------- TTS ----------
         reply_text_for_tts = replace_urls_with_placeholder(reply_text, language)
         reply_text_for_tts = clean_text_for_tts(reply_text_for_tts, language)
+
         audio = synthesize_speech(reply_text_for_tts, language)
+        if not audio:
+            audio = ""
 
         return {"reply": reply_text, "audio": audio}
 
     except Exception as e:
         print("💥 Error in /agent:", e)
         traceback.print_exc()
-        return {"reply": "⚠️ Internal server error occurred."}
+        return {"reply": "⚠️ Internal server error occurred.", "audio": ""}
