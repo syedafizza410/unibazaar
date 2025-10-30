@@ -1,6 +1,6 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
-import base64, os, json, tempfile
+import os, json, tempfile
 
 def synthesize_speech(text: str, language_code: str):
     """
@@ -9,23 +9,12 @@ def synthesize_speech(text: str, language_code: str):
     """
     try:
         credentials = None
-        google_key_b64 = os.getenv("GOOGLE_KEY_JSON")
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON content
 
-        # ✅ Railway-safe Base64 JSON handling
-        if google_key_b64:
+        # ✅ Railway-safe direct JSON handling
+        if google_key_json:
             try:
-                # Remove all whitespace, line breaks, carriage returns, and quotes
-                google_key_b64 = ''.join(google_key_b64.split()).replace('"','')
-
-                # Fix Base64 padding
-                missing_padding = len(google_key_b64) % 4
-                if missing_padding:
-                    google_key_b64 += '=' * (4 - missing_padding)
-
-                # Convert to bytes and decode
-                creds_bytes = google_key_b64.encode("utf-8")
-                creds_json = base64.b64decode(creds_bytes).decode("utf-8")
-                creds_dict = json.loads(creds_json)
+                creds_dict = json.loads(google_key_json)
 
                 # Write temp JSON file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
@@ -34,11 +23,10 @@ def synthesize_speech(text: str, language_code: str):
 
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
                 credentials = service_account.Credentials.from_service_account_file(tmp_path)
-                print("✅ Loaded GOOGLE_KEY_JSON from Base64 env.")
+                print("✅ Loaded GOOGLE_KEY_JSON from env.")
 
             except Exception as err:
-                print("⚠️ Error decoding GOOGLE_KEY_JSON Base64:", err)
-                credentials = None
+                print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
 
         # 🧩 Local fallback
         if not credentials:
@@ -65,9 +53,9 @@ def synthesize_speech(text: str, language_code: str):
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
 
-        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
-        return {"audioContent": f"data:audio/mp3;base64,{audio_base64}"}
+        # Return raw MP3 bytes
+        return response.audio_content
 
     except Exception as e:
         print("🎙️ TTS error:", e)
-        return {"error": str(e)}
+        return None
