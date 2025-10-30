@@ -1,6 +1,6 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
-import base64, re, os, json, tempfile
+import base64, os, json, tempfile
 
 def synthesize_speech(text: str, language_code: str):
     """
@@ -14,15 +14,15 @@ def synthesize_speech(text: str, language_code: str):
         # ✅ Railway-safe Base64 JSON handling
         if google_key_b64:
             try:
-                # Remove whitespace, newlines, and accidental quotes
-                google_key_b64 = re.sub(r'[\s"]+', '', google_key_b64)
+                # Remove all whitespace, line breaks, carriage returns, and quotes
+                google_key_b64 = ''.join(google_key_b64.split()).replace('"','')
 
                 # Fix Base64 padding
                 missing_padding = len(google_key_b64) % 4
                 if missing_padding:
                     google_key_b64 += '=' * (4 - missing_padding)
 
-                # Decode Base64 safely
+                # Convert to bytes and decode
                 creds_bytes = google_key_b64.encode("utf-8")
                 creds_json = base64.b64decode(creds_bytes).decode("utf-8")
                 creds_dict = json.loads(creds_json)
