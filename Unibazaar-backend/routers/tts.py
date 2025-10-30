@@ -1,25 +1,30 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
-import os, json
+import os, json, tempfile
 
 def synthesize_speech(text: str, language_code: str):
     """
     Generate natural voice in English or Roman Urdu.
     Fully compatible with Railway & local environments.
-    Expects GOOGLE_KEY_JSON as a string in environment variables.
     """
     try:
         credentials = None
-        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON string
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON content
 
-        # ✅ Railway-safe direct JSON handling (string expected)
+        # ✅ Railway-safe direct JSON handling
         if google_key_json:
             try:
-                # Parse string to dict
                 creds_dict = json.loads(google_key_json)
-                # Directly create credentials from dict
-                credentials = service_account.Credentials.from_service_account_info(creds_dict)
-                print("✅ Loaded GOOGLE_KEY_JSON from env (string).")
+
+                # Write temp JSON file
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
+                    json.dump(creds_dict, tmp)
+                    tmp_path = tmp.name
+
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
+                credentials = service_account.Credentials.from_service_account_file(tmp_path)
+                print("✅ Loaded GOOGLE_KEY_JSON from env.")
+
             except Exception as err:
                 print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
 
@@ -48,8 +53,10 @@ def synthesize_speech(text: str, language_code: str):
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
 
-        return response.audio_content
+        # Return as base64 string for frontend usage
+        audio_base64 = response.audio_content.encode("base64").decode("utf-8")  # optional if needed
+        return {"audioContent": f"data:audio/mp3;base64,{audio_base64}"}
 
     except Exception as e:
         print("🎙️ TTS error:", e)
-        return None
+        return {"error": str(e)}
