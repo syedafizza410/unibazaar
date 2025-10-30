@@ -14,16 +14,17 @@ def synthesize_speech(text: str, language_code: str):
         # ✅ Railway-safe Base64 JSON handling
         if google_key_b64:
             try:
-                # Remove whitespace/newlines just in case
-                google_key_b64 = re.sub(r"\s+", "", google_key_b64)
+                # Remove whitespace, newlines, and accidental quotes
+                google_key_b64 = re.sub(r'[\s"]+', '', google_key_b64)
 
                 # Fix Base64 padding
                 missing_padding = len(google_key_b64) % 4
                 if missing_padding:
-                    google_key_b64 += "=" * (4 - missing_padding)
+                    google_key_b64 += '=' * (4 - missing_padding)
 
                 # Decode Base64 safely
-                creds_json = base64.b64decode(google_key_b64.encode("utf-8")).decode("utf-8")
+                creds_bytes = google_key_b64.encode("utf-8")
+                creds_json = base64.b64decode(creds_bytes).decode("utf-8")
                 creds_dict = json.loads(creds_json)
 
                 # Write temp JSON file
@@ -37,6 +38,7 @@ def synthesize_speech(text: str, language_code: str):
 
             except Exception as err:
                 print("⚠️ Error decoding GOOGLE_KEY_JSON Base64:", err)
+                credentials = None
 
         # 🧩 Local fallback
         if not credentials:
