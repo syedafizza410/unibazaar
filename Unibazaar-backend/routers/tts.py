@@ -11,20 +11,20 @@ def synthesize_speech(text: str, language_code: str):
         credentials = None
         google_key_json = os.getenv("GOOGLE_KEY_JSON")
 
-        # ✅ Load GOOGLE_KEY_JSON (handles \n or escaped newlines)
+        # ✅ Railway-safe JSON handling
         if google_key_json:
             try:
-                cleaned = google_key_json.strip()
+                cleaned = google_key_json.strip().strip('"')  # remove extra quotes
+                cleaned = cleaned.replace("\\n", "\n")        # fix newlines
 
-                try:
-                    creds_dict = json.loads(cleaned)
-                except json.JSONDecodeError:
-                    cleaned = cleaned.encode("utf-8").decode("unicode_escape")
-                    creds_dict = json.loads(cleaned)
+                creds_dict = json.loads(cleaned)
+                if isinstance(creds_dict, str):
+                    # Agar abhi bhi string hai, decode again
+                    creds_dict = json.loads(creds_dict)
 
-                # Write to temp file safely
+                # Write temp JSON file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-                    tmp.write(json.dumps(creds_dict).encode())  # ✅ fixed line
+                    json.dump(creds_dict, tmp)
                     tmp_path = tmp.name
 
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
@@ -54,7 +54,7 @@ def synthesize_speech(text: str, language_code: str):
 
         audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
-        # 🎧 Generate and return audio
+        # 🎧 Generate audio
         response = client.synthesize_speech(
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
