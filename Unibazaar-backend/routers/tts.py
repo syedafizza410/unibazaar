@@ -9,18 +9,14 @@ def synthesize_speech(text: str, language_code: str):
     """
     try:
         credentials = None
-        google_key_json = os.getenv("GOOGLE_KEY_JSON")
+        google_key_b64 = os.getenv("GOOGLE_KEY_JSON")
 
-        # ✅ Railway-safe JSON handling
-        if google_key_json:
+        # ✅ Railway-safe Base64 JSON handling
+        if google_key_b64:
             try:
-                cleaned = google_key_json.strip().strip('"')  # remove extra quotes
-                cleaned = cleaned.replace("\\n", "\n")        # fix newlines
-
-                creds_dict = json.loads(cleaned)
-                if isinstance(creds_dict, str):
-                    # Agar abhi bhi string hai, decode again
-                    creds_dict = json.loads(creds_dict)
+                # Decode Base64
+                creds_json = base64.b64decode(google_key_b64).decode("utf-8")
+                creds_dict = json.loads(creds_json)
 
                 # Write temp JSON file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
@@ -29,10 +25,10 @@ def synthesize_speech(text: str, language_code: str):
 
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
                 credentials = service_account.Credentials.from_service_account_file(tmp_path)
-                print("✅ GOOGLE_KEY_JSON loaded successfully from env.")
+                print("✅ Loaded GOOGLE_KEY_JSON from Base64 env.")
 
             except Exception as err:
-                print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
+                print("⚠️ Error decoding GOOGLE_KEY_JSON Base64:", err)
 
         # 🧩 Local fallback
         if not credentials:
