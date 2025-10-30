@@ -8,41 +8,42 @@ def synthesize_speech(text: str, language_code: str):
     Fully compatible with Railway & local environments.
     """
     try:
-        google_key_json = os.getenv("GOOGLE_KEY_JSON")
         credentials = None
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")
 
-        # ✅ Handle Railway env variable safely
+        # ✅ Railway safe JSON load
         if google_key_json:
             try:
-                # Try normal load first
+                # Clean up escape characters properly
+                google_key_json = google_key_json.strip()
                 google_key_json = google_key_json.replace("\\n", "\n")
-                creds_dict = json.loads(google_key_json)
-            except json.JSONDecodeError:
-                # Handle invalid \escape issue
-                google_key_json = google_key_json.encode('utf-8').decode('unicode_escape')
-                creds_dict = json.loads(google_key_json)
-            except Exception as err:
-                print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
-                creds_dict = None
 
-            if creds_dict:
+                # Parse JSON safely
+                creds_dict = json.loads(google_key_json)
+
+                # Write JSON to a temp file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-                    tmp.write(json.dumps(creds_dict).encode())
+                    json.dump(creds_dict, tmp)
                     tmp_path = tmp.name
+
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
                 credentials = service_account.Credentials.from_service_account_file(tmp_path)
+                print("✅ Google credentials loaded from env (Railway).")
 
-        # 🧩 Fallback for local development
+            except Exception as err:
+                print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
+
+        # 🧩 Local fallback
         if not credentials:
             key_path = "google_key.json"
             if not os.path.exists(key_path):
                 raise ValueError("❌ GOOGLE_KEY_JSON missing and local google_key.json not found!")
             credentials = service_account.Credentials.from_service_account_file(key_path)
 
-        # 🎤 Initialize TTS client
+        # 🎤 Initialize client
         client = texttospeech.TextToSpeechClient(credentials=credentials)
 
-        # 🧹 Clean text and replace URLs
+        # 🧹 Clean up text
         url_placeholder = {
             "en": "Here's the university website, check it out.",
             "roman_ur": "Yahan university ki website hai, check karein.",
@@ -72,12 +73,13 @@ def synthesize_speech(text: str, language_code: str):
             pitch=-2.0,
         )
 
+        # 🔊 Generate audio
         synthesis_input = texttospeech.SynthesisInput(text=text)
         response = client.synthesize_speech(
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
 
-        # 🎧 Return Base64 MP3
+        # 🎧 Return base64 audio
         audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
         return f"data:audio/mp3;base64,{audio_base64}"
 
