@@ -89,7 +89,7 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, language: language}),
+        body: JSON.stringify({ message: text, language: language }),
       });
 
       if (!res.ok) throw new Error("Backend response not OK");
@@ -98,9 +98,14 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
 
       setChat((prev) => [...prev, { from: "bot", text: replyText }]);
 
-      if (voiceReply && data.audio) {
-        const audio = new Audio(data.audio);
-        audio.play();
+      // ✅ Fixed voice playback
+      if (voiceReply && data.audio?.audioContent) {
+        try {
+          const audio = new Audio(data.audio.audioContent);
+          await audio.play();
+        } catch (err) {
+          console.error("Audio playback error:", err);
+        }
       }
     } catch (err) {
       console.error("Agent error:", err);
@@ -205,7 +210,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
                 className="text-white text-sm rounded px-2 py-1"
               >
                 <option value="en-US" className="text-black">English</option>
-                {/* <option value="ur" className="text-black">Saraiki</option> */}
                 <option value="en-IN" className="text-black">Roman Urdu</option>
               </select>
               <button
