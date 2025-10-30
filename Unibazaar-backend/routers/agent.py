@@ -18,7 +18,6 @@ if not API_KEY:
 genai.configure(api_key=API_KEY)
 router = APIRouter()
 
-
 def detect_language(text: str) -> str:
     if any(word in text.lower() for word in ["hain", "kya", "mein", "ka", "ki", "se", "mera", "apka"]):
         return "roman_ur"
@@ -50,58 +49,60 @@ def clean_text_for_tts(text: str, language: str) -> str:
     text = re.sub(r"[^A-Za-z0-9\s\+]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
-
 @router.post("/agent")
 async def chat_agent(request: Request):
     try:
         data = await request.json()
         user_message = data.get("message", "").strip()
         language = data.get("language") or detect_language(user_message)
+        user_lower = user_message.lower()
 
         if not user_message:
             return {"reply": "Please type or say something to start.", "audio": ""}
 
+        # ---------- Keywords ----------
         allowed_keywords = [
             "university", "college", "faculty", "department", "campus",
             "admission", "degree", "scholarship", "fees", "education", "study",
-            "courses", "majors", "program", "ranking"
+            "courses", "majors", "program", "ranking", "uni"
         ]
-
-        if not any(k in user_message.lower() for k in allowed_keywords):
-            if language == "roman_ur":
-                reply = (
-                    "Maaf kijiye, main sirf universities ke mutaliq sawalon ka jawab de sakta hoon. "
-                    "Agar aapko universities, admission, ya faculty ke bare mein kuch poochna hai to main hazir hoon."
-                )
-            else:
-                reply = (
-                    "Sorry, I can only answer questions related to universities. "
-                    "If you want to know about universities information, I can help."
-                )
-
-            audio = synthesize_speech(reply, language)
-            if not audio:
-                audio = ""
-            return {"reply": reply, "audio": audio}
-
         greetings = ["hi", "hey", "hello", "salam", "assalamualaikum", "hy", "heyy"]
-        if user_message.lower() in greetings:
-            if language == "en":
-                reply = (
-                    "Hello! I'm UniBazaar AI, your multilingual university assistant.\n"
-                    "You can talk to me in English or Roman Urdu.\n"
-                    "How can I help you today?"
-                )
-            else:
-                reply = (
-                    "Salam! Main UniBazaar AI hoon, aapki madad ke liye.\n"
-                    "Aap mujh se English ya Roman Urdu mein baat kar sakti hain.\n"
-                    "Bataiye kis field ke universities chahiye?"
-                )
+        chitchat_patterns = [r"kese ho", r"kaise ho", r"how are you", r"kaise chal raha hai", r"kya haal hai"]
 
+        # ---------- 1. Greetings ----------
+        if user_lower in greetings:
+            reply = (
+                "Hello! I'm UniBazaar AI, your multilingual university assistant.\n"
+                "You can talk to me in English or Roman Urdu.\n"
+                "How can I help you today?"
+            ) if language == "en" else (
+                "Salam! Main UniBazaar AI hoon, aapki madad ke liye.\n"
+                "Aap mujh se English ya Roman Urdu mein baat kar sakti hain.\n"
+                "Bataiye kis field ke universities chahiye?"
+            )
             audio = synthesize_speech(clean_text_for_tts(reply, language), language)
             return {"reply": reply, "audio": audio}
 
+        # ---------- 2. Chit-chat ----------
+        for pattern in chitchat_patterns:
+            if re.search(pattern, user_lower):
+                reply = (
+                    "I'm doing great, thank you! How can I assist you with universities?" if language == "en"
+                    else "Main theek hoon! Aapko universities ke bare mein kya jaan-na hai?"
+                )
+                audio = synthesize_speech(clean_text_for_tts(reply, language), language)
+                return {"reply": reply, "audio": audio}
+
+        # ---------- 3. Non-university questions ----------
+        if not any(k in user_lower for k in allowed_keywords):
+            reply = (
+                "Sorry, I can only answer questions related to universities. If you want info about universities, I can help." if language == "en"
+                else "Maaf kijiye, main sirf universities ke mutaliq sawalon ka jawab de sakta hoon."
+            )
+            audio = synthesize_speech(reply, language)
+            return {"reply": reply, "audio": audio}
+
+        # ---------- 4. University / Uni questions ----------
         model = genai.GenerativeModel("models/gemini-2.0-flash")
         prompt = f"""
 You are UniBazaar AI — a helpful multilingual university assistant.
@@ -113,7 +114,6 @@ If the user asks about universities, always provide structured info like:
 
 If data is unavailable, write "Not available".
 """
-
         response = model.generate_content(prompt)
         response_text = getattr(response, "text", "").strip() or "Sorry, I couldn’t generate a response."
 
