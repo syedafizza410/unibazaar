@@ -1,30 +1,25 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
-import os, json, tempfile
+import os, json
 
 def synthesize_speech(text: str, language_code: str):
     """
     Generate natural voice in English or Roman Urdu.
     Fully compatible with Railway & local environments.
+    Expects GOOGLE_KEY_JSON as a string in environment variables.
     """
     try:
         credentials = None
-        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON content
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON string
 
-        # ✅ Railway-safe direct JSON handling
+        # ✅ Railway-safe direct JSON handling (string expected)
         if google_key_json:
             try:
+                # Parse string to dict
                 creds_dict = json.loads(google_key_json)
-
-                # Write temp JSON file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-                    json.dump(creds_dict, tmp)
-                    tmp_path = tmp.name
-
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
-                credentials = service_account.Credentials.from_service_account_file(tmp_path)
-                print("✅ Loaded GOOGLE_KEY_JSON from env.")
-
+                # Directly create credentials from dict
+                credentials = service_account.Credentials.from_service_account_info(creds_dict)
+                print("✅ Loaded GOOGLE_KEY_JSON from env (string).")
             except Exception as err:
                 print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
 
@@ -53,7 +48,6 @@ def synthesize_speech(text: str, language_code: str):
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
 
-        # Return raw MP3 bytes
         return response.audio_content
 
     except Exception as e:
