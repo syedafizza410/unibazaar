@@ -1,6 +1,6 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
-import os, json, tempfile
+import os, tempfile, base64
 
 def synthesize_speech(text: str, language_code: str):
     """
@@ -9,24 +9,21 @@ def synthesize_speech(text: str, language_code: str):
     """
     try:
         credentials = None
-        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON content
+        google_key_json = os.getenv("GOOGLE_KEY_JSON")  # Direct JSON string
 
-        # ✅ Railway-safe direct JSON handling
+        # ✅ Railway-safe direct JSON handling (string → temp file)
         if google_key_json:
             try:
-                creds_dict = json.loads(google_key_json)
-
-                # Write temp JSON file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-                    json.dump(creds_dict, tmp)
+                    tmp.write(google_key_json.encode("utf-8"))  # write string as bytes
                     tmp_path = tmp.name
 
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
                 credentials = service_account.Credentials.from_service_account_file(tmp_path)
-                print("✅ Loaded GOOGLE_KEY_JSON from env.")
+                print("✅ Loaded GOOGLE_KEY_JSON from env as string.")
 
             except Exception as err:
-                print("⚠️ Error parsing GOOGLE_KEY_JSON:", err)
+                print("⚠️ Error using GOOGLE_KEY_JSON:", err)
 
         # 🧩 Local fallback
         if not credentials:
@@ -54,7 +51,7 @@ def synthesize_speech(text: str, language_code: str):
         )
 
         # Return as base64 string for frontend usage
-        audio_base64 = response.audio_content.encode("base64").decode("utf-8")  # optional if needed
+        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
         return {"audioContent": f"data:audio/mp3;base64,{audio_base64}"}
 
     except Exception as e:
