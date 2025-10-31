@@ -40,8 +40,11 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceReply, setVoiceReply] = useState(true);
-  const [language, setLanguage] = useState("en-US");
+  const [language, setLanguage] = useState("en"); // backend expects "en" or "roman_ur"
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Map frontend language to SpeechRecognition compatible lang
+  const getRecognitionLang = (lang: string) => (lang === "en" ? "en-US" : "hi-IN");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -50,7 +53,7 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
-        recognition.lang = language;
+        recognition.lang = getRecognitionLang(language);
         recognition.interimResults = false;
 
         recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -89,7 +92,7 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, language: language }),
+        body: JSON.stringify({ message: text, language }), // send "en" or "roman_ur"
       });
 
       if (!res.ok) throw new Error("Backend response not OK");
@@ -98,7 +101,6 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
 
       setChat((prev) => [...prev, { from: "bot", text: replyText }]);
 
-      // ✅ Fixed voice playback
       if (voiceReply && data.audio?.audioContent) {
         try {
           const audio = new Audio(data.audio.audioContent);
@@ -209,8 +211,8 @@ export default function ChatAgent({ open, setOpen }: ChatAgentProps) {
                 onChange={(e) => setLanguage(e.target.value)}
                 className="text-white text-sm rounded px-2 py-1"
               >
-                <option value="en-US" className="text-black">English</option>
-                <option value="en-IN" className="text-black">Roman Urdu</option>
+                <option value="en" className="text-black">English</option>
+                <option value="roman_ur" className="text-black">Roman Urdu</option>
               </select>
               <button
                 onClick={() => setVoiceReply((v) => !v)}
