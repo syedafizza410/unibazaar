@@ -54,7 +54,8 @@ async def chat_agent(request: Request):
     try:
         data = await request.json()
         user_message = data.get("message", "").strip()
-        language = data.get("language") or detect_language(user_message)
+        frontend_language = data.get("language")  # trust frontend language first
+        language = frontend_language if frontend_language else detect_language(user_message)
         user_lower = user_message.lower()
 
         if not user_message:
@@ -71,34 +72,37 @@ async def chat_agent(request: Request):
 
         # ---------- 1. Greetings ----------
         if user_lower in greetings:
-            reply = (
-                "Hello! I'm UniBazaar AI, your multilingual university assistant.\n"
-                "You can talk to me in English or Roman Urdu.\n"
-                "How can I help you today?"
-            ) if language == "en" else (
-                "Salam! Main UniBazaar AI hoon, aapki madad ke liye.\n"
-                "Aap mujh se English ya Roman Urdu mein baat kar sakti hain.\n"
-                "Bataiye kis field ke universities chahiye?"
-            )
+            if language == "en":
+                reply = (
+                    "Hello! I'm UniBazaar AI, your multilingual university assistant.\n"
+                    "You can talk to me in English or Roman Urdu.\n"
+                    "How can I help you today?"
+                )
+            else:
+                reply = (
+                    "Salam! Main UniBazaar AI hoon, aapki madad ke liye.\n"
+                    "Aap mujh se English ya Roman Urdu mein baat kar sakti hain.\n"
+                    "Bataiye kis field ke universities chahiye?"
+                )
             audio = synthesize_speech(clean_text_for_tts(reply, language), language)
             return {"reply": reply, "audio": audio}
 
         # ---------- 2. Chit-chat ----------
         for pattern in chitchat_patterns:
             if re.search(pattern, user_lower):
-                reply = (
-                    "I'm doing great, thank you! How can I assist you with universities?" if language == "en"
-                    else "Main theek hoon! Aapko universities ke bare mein kya jaan-na hai?"
-                )
+                if language == "en":
+                    reply = "I'm doing great, thank you! How can I assist you with universities?"
+                else:
+                    reply = "Main theek hoon! Aapko universities ke bare mein kya jaan-na hai?"
                 audio = synthesize_speech(clean_text_for_tts(reply, language), language)
                 return {"reply": reply, "audio": audio}
 
         # ---------- 3. Non-university questions ----------
         if not any(k in user_lower for k in allowed_keywords):
-            reply = (
-                "Sorry, I can only answer questions related to universities. If you want info about universities, I can help." if language == "en"
-                else "Maaf kijiye, main sirf universities ke mutaliq sawalon ka jawab de sakta hoon."
-            )
+            if language == "en":
+                reply = "Sorry, I can only answer questions related to universities. If you want info about universities, I can help."
+            else:
+                reply = "Maaf kijiye, main sirf universities ke mutaliq sawalon ka jawab de sakta hoon."
             audio = synthesize_speech(reply, language)
             return {"reply": reply, "audio": audio}
 
