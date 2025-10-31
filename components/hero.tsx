@@ -18,7 +18,7 @@ export default function Hero({ setIsChatOpen }: HeroProps) {
           Find the Best <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">University</span> for You 🎓
         </motion.h1>
         <p className="text-lg text-indigo-100 mb-8">
-          Explore top universities in World — choose by faculty, fees, and city.
+          Explore top universities in World — choose by country, city and faculty
         </p>
 
         <motion.button
